@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>إدارة الساعات الإضافية</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #f5f5f5; }
+        header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; text-align: center; }
+        header h1 { font-size: 2em; margin-bottom: 5px; }
+        .container { max-width: 1200px; margin: 20px auto; padding: 0 20px; }
+        .tabs { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+        button { padding: 10px 20px; background: white; border: 2px solid #ddd; border-radius: 8px; cursor: pointer; font-size: 1em; transition: all 0.3s; }
+        button.active { background: #667eea; color: white; border-color: #667eea; }
+        button:hover { border-color: #667eea; }
+        .tab-content { display: none; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .tab-content.active { display: block; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: 600; color: #333; }
+        input, select, textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 1em; }
+        input:focus, select:focus { outline: none; border-color: #667eea; box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1); }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .btn-primary { background: #667eea; color: white; padding: 12px 20px; border: none; cursor: pointer; font-weight: 600; }
+        .btn-primary:hover { background: #5568d3; }
+        .btn-danger { background: #e74c3c; color: white; padding: 8px 12px; border: none; cursor: pointer; }
+        .btn-danger:hover { background: #c0392b; }
+        .btn-success { background: #27ae60; color: white; padding: 8px 12px; border: none; cursor: pointer; }
+        .btn-success:hover { background: #229954; }
+        .btn-info { background: #3498db; color: white; padding: 8px 12px; border: none; cursor: pointer; }
+        .btn-info:hover { background: #2980b9; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        table th { background: #f9f9f9; padding: 12px; text-align: right; font-weight: 600; border-bottom: 2px solid #ddd; }
+        table td { padding: 12px; border-bottom: 1px solid #eee; }
+        table tr:hover { background: #f5f5f5; }
+        .alert { padding: 15px; border-radius: 6px; margin-bottom: 15px; display: none; }
+        .alert.success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; display: block; }
+        .alert.error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; display: block; }
+        .modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; }
+        .modal.active { display: flex; align-items: center; justify-content: center; }
+        .modal-content { background: white; padding: 30px; border-radius: 8px; max-width: 500px; width: 90%; }
+        .modal-header { font-size: 1.5em; font-weight: 600; margin-bottom: 20px; }
+        .modal-close { float: left; font-size: 1.5em; cursor: pointer; color: #999; }
+        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
+        .stat-card { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 8px; text-align: center; }
+        .stat-value { font-size: 2em; font-weight: 700; }
+        .stat-label { font-size: 0.9em; opacity: 0.9; margin-top: 5px; }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>💼 إدارة الساعات الإضافية</h1>
+        <p>نظام شامل لإدارة وحساب ساعات العمل الإضافية للموظفين</p>
+    </header>
+
+    <div class="container">
+        <div id="alert" class="alert"></div>
+
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('records')">📊 السجلات</button>
+            <button class="tab-btn" onclick="switchTab('employees')">👥 الموظفون</button>
+            <button class="tab-btn" onclick="switchTab('periods')">📅 الفترات</button>
+        </div>
+
+        <!-- السجلات -->
+        <div id="records" class="tab-content active">
+            <h2>إدارة السجلات</h2>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>اختر الموظف:</label>
+                    <select id="selectEmployee" onchange="loadRecords()">
+                        <option value="">-- اختر موظفاً --</option>
+                        {% for emp in employees %}
+                        <option value="{{ emp[0] }}">{{ emp[1] }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>اختر الفترة:</label>
+                    <select id="selectPeriod" onchange="loadRecords()">
+                        <option value="">-- اختر فترة --</option>
+                        {% for period in periods %}
+                        <option value="{{ period[0] }}">{{ period[1] }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <div class="stats" id="stats"></div>
+
+            <button class="btn-primary" onclick="openAddRecordModal()">➕ إضافة سجل جديد</button>
+            <button class="btn-info" onclick="exportToExcel()">📥 تصدير إلى Excel</button>
+            <button class="btn-success" onclick="performBackup()">💾 نسخ احتياطي</button>
+
+            <table id="recordsTable">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>التاريخ</th>
+                        <th>من</th>
+                        <th>إلى</th>
+                        <th>مضاعف</th>
+                        <th>الساعات</th>
+                        <th>الساعات الإضافية</th>
+                        <th>ملاحظات</th>
+                        <th>الإجراءات</th>
+                    </tr>
+                </thead>
+                <tbody id="recordsBody"></tbody>
+            </table>
+        </div>
+
+        <!-- الموظفون -->
+        <div id="employees" class="tab-content">
+            <h2>إدارة الموظفين</h2>
+            <button class="btn-primary" onclick="openAddEmployeeModal()">➕ إضافة موظف جديد</button>
+            <table id="employeesTable">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>الاسم</th>
+                        <th>المسمى الوظيفي</th>
+                        <th>الراتب</th>
+                        <th>الساعة العادية</th>
+                        <th>الساعة الإضافية (×1.5)</th>
+                        <th>الإجراءات</th>
+                    </tr>
+                </thead>
+                <tbody id="employeesBody"></tbody>
+            </table>
+        </div>
+
+        <!-- الفترات -->
+        <div id="periods" class="tab-content">
+            <h2>إدارة الفترات الزمنية</h2>
+            <button class="btn-primary" onclick="openAddPeriodModal()">➕ إضافة فترة جديدة</button>
+            <table id="periodsTable">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>اسم الفترة</th>
+                        <th>السنة</th>
+                        <th>الحالة</th>
+                        <th>الإجراءات</th>
+                    </tr>
+                </thead>
+                <tbody id="periodsBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- نموذج إضافة سجل -->
+    <div id="recordModal" class="modal">
+        <div class="modal-content">
+            <span class="modal-close" onclick="closeModal('recordModal')">&times;</span>
+            <div class="modal-header">إضافة سجل جديد</div>
+            <div class="form-group">
+                <label>الموظف:</label>
+                <select id="recordEmployee">
+                    {% for emp in employees %}
+                    <option value="{{ emp[0] }}">{{ emp[1] }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>التاريخ:</label>
+                <input type="date" id="recordDate">
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>من:</label>
+                    <input type="time" id="recordStart">
+                </div>
+                <div class="form-group">
+                    <label>إلى:</label>
+                    <input type="time" id="recordEnd" onchange="calculateHours()">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>المضاعف:</label>
+                    <input type="number" id="recordMultiplier" value="1.5" step="0.1">
+                    <small style="color: #666; margin-top: 5px;">1.5 = ساعة ونص (الساعة الإضافية)</small>
+                </div>
+                <div class="form-group">
+                    <label>الساعات:</label>
+                    <input type="number" id="recordHours" readonly>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>المبلغ:</label>
+                <input type="number" id="recordAmount" readonly>
+                <small style="color: #666; margin-top: 5px; display: block;">الساعات × الأجر بالساعة × 1.5</small>
+            </div>
+            <div class="form-group">
+                <label>الملاحظات:</label>
+                <textarea id="recordNotes"></textarea>
+            </div>
+            <button class="btn-primary" onclick="saveRecord()">حفظ</button>
+        </div>
+    </div>
+
+    <!-- نموذج إضافة فترة -->
+    <div id="periodModal" class="modal">
+        <div class="modal-content">
+            <span class="modal-close" onclick="closeModal('periodModal')">&times;</span>
+            <div class="modal-header">إضافة فترة جديدة</div>
+            <div class="form-group">
+                <label>اسم الفترة:</label>
+                <input type="text" id="periodName" placeholder="مثال: فترة سبتمبر">
+            </div>
+            <div class="form-group">
+                <label>السنة:</label>
+                <input type="number" id="periodYear" value="2025" min="2000" max="2100">
+            </div>
+            <button class="btn-primary" onclick="savePeriod()">حفظ</button>
+        </div>
+    </div>
+
+    <!-- نموذج إضافة موظف -->
+    <div id="employeeModal" class="modal">
+        <div class="modal-content">
+            <span class="modal-close" onclick="closeModal('employeeModal')">&times;</span>
+            <div class="modal-header">إضافة موظف جديد</div>
+            <div class="form-group">
+                <label>الاسم:</label>
+                <input type="text" id="empName">
+            </div>
+            <div class="form-group">
+                <label>المسمى الوظيفي:</label>
+                <input type="text" id="empTitle">
+            </div>
+            <div class="form-group">
+                <label>الراتب:</label>
+                <input type="number" id="empSalary" step="0.01">
+            </div>
+            <button class="btn-primary" onclick="saveEmployee()">حفظ</button>
+        </div>
+    </div>
+
+    <script>
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+            document.getElementById(tab).classList.add('active');
+            event.target.classList.add('active');
+            localStorage.setItem('activeTab', tab);
+
+            if (tab === 'employees') loadEmployees();
+            if (tab === 'periods') loadPeriods();
+        }
+
+        function restoreTab() {
+            const savedTab = localStorage.getItem('activeTab') || 'records';
+            const tabBtns = document.querySelectorAll('.tab-btn');
+            tabBtns.forEach((btn, i) => {
+                const tabs = ['records', 'employees', 'periods'];
+                if (tabs[i] === savedTab) {
+                    btn.click();
+                }
+            });
+        }
+
+        function showAlert(msg, type) {
+            const alert = document.getElementById('alert');
+            alert.textContent = msg;
+            alert.className = 'alert ' + type;
+            setTimeout(() => alert.className = 'alert', 3000);
+        }
+
+        function loadRecords() {
+            const emp_id = document.getElementById('selectEmployee').value;
+            const period_id = document.getElementById('selectPeriod').value;
+            
+            if (!emp_id || !period_id) return;
+
+            fetch('/get_data', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ employee_id: emp_id, period_id: period_id })
+            })
+            .then(r => r.json())
+            .then(data => {
+                document.getElementById('recordsBody').innerHTML = data.records.map((r, i) => `
+                    <tr>
+                        <td>${i+1}</td>
+                        <td>${r[1]}</td>
+                        <td>${r[2]}</td>
+                        <td>${r[3]}</td>
+                        <td>${r[4]}</td>
+                        <td>${r[5]}</td>
+                        <td>${r[6]}</td>
+                        <td>${r[7]}</td>
+                        <td>
+                            <button class="btn-info" onclick="editRecord(${r[0]})">تعديل</button>
+                            <button class="btn-danger" onclick="deleteRecord(${r[0]})">حذف</button>
+                        </td>
+                    </tr>
+                `).join('');
+
+                const overtime_wage = (data.hourly_wage * 1.5).toFixed(3);
+                document.getElementById('stats').innerHTML = `
+                    <div class="stat-card">
+                        <div class="stat-value">${data.total_hours}</div>
+                        <div class="stat-label">إجمالي الساعات</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${data.total_amount.toFixed(2)}</div>
+                        <div class="stat-label">إجمالي المبلغ</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${data.hourly_wage.toFixed(3)}</div>
+                        <div class="stat-label">الساعة العادية</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${overtime_wage}</div>
+                        <div class="stat-label">الساعة الإضافية (×1.5)</div>
+                    </div>
+                `;
+            });
+        }
+
+        function calculateHours() {
+            const start = document.getElementById('recordStart').value;
+            const end = document.getElementById('recordEnd').value;
+            const emp_id = document.getElementById('recordEmployee').value;
+
+            if (!start || !end || !emp_id) return;
+
+            let hourly_wage = 0;
+            fetch('/get_employee', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: emp_id })
+            }).then(r => r.json()).then(emp => {
+                const mult = parseFloat(document.getElementById('recordMultiplier').value) || 1;
+                fetch('/calculate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ start, end, hourly_wage: emp.salary / 240, multiplier: mult })
+                }).then(r => r.json()).then(d => {
+                    document.getElementById('recordHours').value = d.hours;
+                    document.getElementById('recordAmount').value = d.amount;
+                });
+            });
+        }
+
+        function openAddRecordModal() {
+            const selEmp = document.getElementById('selectEmployee').value;
+            const selPeriod = document.getElementById('selectPeriod').value;
+            if (!selEmp || !selPeriod) {
+                showAlert('اختر موظف وفترة أولاً', 'error');
+                return;
+            }
+            document.getElementById('recordEmployee').value = selEmp;
+            document.getElementById('recordDate').value = new Date().toISOString().split('T')[0];
+            document.getElementById('recordModal').classList.add('active');
+        }
+
+        function saveRecord() {
+            const emp_id = document.getElementById('recordEmployee').value;
+            const period_id = document.getElementById('selectPeriod').value;
+            const data = {
+                employee_id: emp_id,
+                date: document.getElementById('recordDate').value,
+                start_time: document.getElementById('recordStart').value,
+                end_time: document.getElementById('recordEnd').value,
+                hours: parseFloat(document.getElementById('recordHours').value),
+                multiplier: parseFloat(document.getElementById('recordMultiplier').value),
+                overtime_amount: parseFloat(document.getElementById('recordAmount').value),
+                notes: document.getElementById('recordNotes').value,
+                period_id: period_id
+            };
+
+            fetch('/add_record', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            }).then(r => r.json()).then(d => {
+                if (d.success) {
+                    showAlert('تم حفظ السجل', 'success');
+                    closeModal('recordModal');
+                    document.getElementById('selectEmployee').value = emp_id;
+                    document.getElementById('selectPeriod').value = period_id;
+                    loadRecords();
+                } else showAlert(d.message, 'error');
+            });
+        }
+
+        function deleteRecord(id) {
+            if (confirm('هل تأكد من حذف السجل؟')) {
+                fetch('/delete_record', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ record_id: id })
+                }).then(r => r.json()).then(d => {
+                    if (d.success) {
+                        showAlert('تم الحذف', 'success');
+                        loadRecords();
+                    }
+                });
+            }
+        }
+
+        function loadEmployees() {
+            const tbody = document.getElementById('employeesBody');
+            const emps = {{ employees | tojson }};
+            tbody.innerHTML = emps.map((e, i) => {
+                const hourly_wage = (e[3] / 240).toFixed(3);
+                const overtime_wage = (hourly_wage * 1.5).toFixed(3);
+                return `
+                <tr>
+                    <td>${i+1}</td>
+                    <td>${e[1]}</td>
+                    <td>${e[2]}</td>
+                    <td>${e[3]}</td>
+                    <td style="color: #667eea; font-weight: 600;">${hourly_wage}</td>
+                    <td style="color: #764ba2; font-weight: 600;">${overtime_wage}</td>
+                    <td>
+                        <button class="btn-info" onclick="editEmployee(${e[0]})">تعديل</button>
+                        <button class="btn-danger" onclick="deleteEmployee(${e[0]})">حذف</button>
+                    </td>
+                </tr>
+            `}).join('');
+        }
+
+        function openAddEmployeeModal() {
+            document.getElementById('employeeModal').classList.add('active');
+        }
+
+        function saveEmployee() {
+            const data = {
+                name: document.getElementById('empName').value,
+                job_title: document.getElementById('empTitle').value,
+                salary: parseFloat(document.getElementById('empSalary').value)
+            };
+
+            fetch('/add_employee', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            }).then(r => r.json()).then(d => {
+                if (d.success) {
+                    showAlert('تم إضافة الموظف', 'success');
+                    closeModal('employeeModal');
+                    loadEmployees();
+                } else showAlert(d.message, 'error');
+            });
+        }
+
+        function deleteEmployee(id) {
+            if (confirm('هل تأكد من حذف الموظف؟')) {
+                fetch('/delete_employee', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id })
+                }).then(r => r.json()).then(d => {
+                    if (d.success) {
+                        showAlert('تم حذف الموظف', 'success');
+                        loadEmployees();
+                    }
+                });
+            }
+        }
+
+        function loadPeriods() {
+            const tbody = document.getElementById('periodsBody');
+            const periods = {{ periods | tojson }};
+            tbody.innerHTML = periods.map((p, i) => {
+                const year = p[2] || new Date().getFullYear();
+                const isOpen = p[0] === 1;
+                return `
+                <tr>
+                    <td>${i+1}</td>
+                    <td>${p[1]}</td>
+                    <td style="font-weight: 600; color: #667eea;">${year}</td>
+                    <td>${isOpen ? '🟢 مفتوحة' : '🔴 مغلقة'}</td>
+                    <td>${isOpen ? '<button class="btn-warning" onclick="closePeriod(' + p[0] + ')">إغلاق الفترة</button>' : '-'}</td>
+                </tr>
+            `}).join('');
+        }
+
+        function openAddPeriodModal() {
+            const year = new Date().getFullYear();
+            document.getElementById('periodYear').value = year;
+            document.getElementById('periodName').value = '';
+            document.getElementById('periodModal').classList.add('active');
+        }
+
+        function savePeriod() {
+            const name = document.getElementById('periodName').value;
+            const year = parseInt(document.getElementById('periodYear').value);
+            
+            if (!name.trim()) {
+                showAlert('أدخل اسم الفترة', 'error');
+                return;
+            }
+
+            fetch('/add_period', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, year })
+            }).then(r => r.json()).then(d => {
+                if (d.success) {
+                    showAlert('تم إضافة الفترة', 'success');
+                    closeModal('periodModal');
+                    loadPeriods();
+                } else showAlert(d.message, 'error');
+            });
+        }
+
+        function closePeriod(id) {
+            fetch('/close_period', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ period_id: id })
+            }).then(r => r.json()).then(d => {
+                if (d.success) {
+                    showAlert('تم إغلاق الفترة', 'success');
+                    loadPeriods();
+                }
+            });
+        }
+
+        function exportToExcel() {
+            const emp_id = document.getElementById('selectEmployee').value;
+            const period_id = document.getElementById('selectPeriod').value;
+            if (!emp_id || !period_id) { showAlert('اختر موظفاً وفترة', 'error'); return; }
+
+            const emp_name = document.getElementById('selectEmployee').options[document.getElementById('selectEmployee').selectedIndex].text;
+            fetch('/export', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ employee_id: emp_id, period_id: period_id, employee_name: emp_name })
+            }).then(r => r.blob()).then(blob => {
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `Overtime_${emp_name}.xlsx`;
+                a.click();
+            });
+        }
+
+        function performBackup() {
+            fetch('/backup', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            }).then(r => r.json()).then(d => {
+                showAlert(d.message, 'success');
+            });
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).classList.remove('active');
+        }
+
+        loadEmployees();
+        loadPeriods();
+        restoreTab();
+    </script>
+</body>
+</html>
