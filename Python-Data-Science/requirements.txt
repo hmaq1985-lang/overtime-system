@@ -1,3 +1,4 @@
+# المكتبات الحالية موجودة عندك
 blinker==1.9.0
 click==8.3.1
 contourpy==1.3.1
@@ -30,3 +31,7 @@ six==1.17.0
 tzdata==2025.1
 vobject==0.9.9
 Werkzeug==3.1.3
+
+# المكتبات الجديدة المطلوبة للـ PostgreSQL
+psycopg2-binary==2.9.7
+SQLAlchemy==2.0.22
